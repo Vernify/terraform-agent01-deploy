@@ -16,93 +16,92 @@ variable "proxmox_password" {
   sensitive   = true
 }
 
-variable "vm_name" {
-  description = "Name of the VM."
-  type        = string
-  default     = "agent01"
-}
-
 variable "proxmox_node" {
-  description = "Proxmox node to create the VM on."
+  description = "Proxmox node to create the LXC container on."
   type        = string
-  default     = "pve"
-}
-
-variable "proxmox_datastore" {
-  description = "Datastore for the VM disk, EFI disk, and cloud-init drive."
-  type        = string
-  default     = "Proxmox_LVM"
+  default     = "pve08"
 }
 
 variable "network_bridge" {
-  description = "Bridge for the VM's primary NIC."
+  description = "Bridge for the LXC container's primary NIC."
   type        = string
   default     = "vmbr0"
 }
 
-variable "template_name" {
-  description = "Packer template to clone."
+variable "lxc_hostname" {
+  description = "Hostname for the LXC container."
   type        = string
-  default     = "ubuntu-24.04-template"
+  default     = "agent01"
 }
 
-variable "vm_cores" {
-  description = "vCPU cores for agent01 (build executor workload)."
+variable "lxc_vmid" {
+  description = "LXC container ID. Auto-assigned by Proxmox if null."
   type        = number
-  default     = 4
+  default     = null
 }
 
-variable "vm_memory" {
-  description = "Memory (MiB) for agent01 (build executor workload)."
-  type        = number
-  default     = 8192
-}
-
-variable "disk_size" {
-  description = "Disk size (GiB) for agent01."
-  type        = number
-  default     = 40
-}
-
-variable "ci_user" {
-  description = "cloud-init login user."
+variable "lxc_storage" {
+  description = "Storage for LXC container (e.g. 'pve-08-zfs' or 'local-lvm')."
   type        = string
-  default     = "ubuntu"
+  default     = "pve-08-zfs"
+}
+
+variable "lxc_cores" {
+  description = "vCPU cores for agent01 LXC (build executor workload — lighter than VM)."
+  type        = number
+  default     = 2
+}
+
+variable "lxc_memory" {
+  description = "Memory (MiB) for agent01 LXC (lighter than VM)."
+  type        = number
+  default     = 4096
+}
+
+variable "lxc_swap" {
+  description = "Swap (MiB) for agent01 LXC."
+  type        = number
+  default     = 512
+}
+
+variable "lxc_disk_size" {
+  description = "Root disk size (GiB) for agent01 LXC."
+  type        = number
+  default     = 20
+}
+
+variable "lxc_osimage" {
+  description = "LXC OS image to clone (must exist on Proxmox node). Format: 'storage:vztmpl/template-name.tar.zst'."
+  type        = string
+  default     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
 }
 
 variable "ssh_public_keys" {
-  description = "SSH public keys authorised for the cloud-init user. REQUIRED for Ansible access (e.g. the bootstrap key's .pub). Public keys are not secret."
+  description = "SSH public keys authorised for the root user (LXC containers run as root). REQUIRED for Ansible access. Public keys are not secret."
   type        = list(string)
   default     = []
 }
 
 variable "ipv4_address" {
-  description = "cloud-init IPv4 address: 'dhcp' or a CIDR like '192.0.2.10/24'."
+  description = "LXC container IPv4 address in CIDR notation (e.g., '192.168.22.53/24')."
   type        = string
   default     = "192.168.22.53/24"
 }
 
 variable "ipv4_gateway" {
-  description = "Gateway when ipv4_address is a static CIDR; null for DHCP."
+  description = "Gateway for static IPv4 configuration."
   type        = string
   default     = "192.168.22.1"
 }
 
-variable "search_domain" {
-  description = "DNS search domain applied to the VM via cloud-init."
-  type        = string
-  default     = "vernify.internal"
-}
-
 variable "tags" {
-  description = "Tags to apply to the VM."
+  description = "Tags to apply to the LXC container in Proxmox."
   type        = list(string)
-  default     = ["phase-5", "build-capacity", "agent01"]
+  default     = ["vernify", "ci", "agent"]
 }
 
-variable "ci_password" {
-  description = "Password for the cloud-init user (for debugging; SSH keys preferred)."
+variable "search_domain" {
+  description = "DNS search domain applied to the LXC container."
   type        = string
-  sensitive   = true
-  default     = null
+  default     = "vernify.com"
 }

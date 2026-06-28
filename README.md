@@ -1,23 +1,25 @@
 # terraform-agent01-deploy
 
-Terraform configuration for provisioning the agent01 build capacity host on Proxmox.
+Terraform configuration for provisioning the agent01 build capacity LXC container on Proxmox.
 
 ## Overview
 
-agent01 is a 4 vCPU / 8 GB RAM Ubuntu 24.04 VM that runs:
+agent01 is a 2 vCPU / 4 GB RAM Ubuntu 24.04 LXC container that runs:
 - Jenkins agent (systemd service, JNLP protocol)
 - Vault agent (systemd service, auto-renews secrets)
 - Toolchain: Packer, Terraform, Ansible (host-installed)
 
-This repository follows the [terraform-proxmox-vm](https://github.com/iac-foundry/terraform-proxmox-vm) module pattern for consistency with sec01 and build01 deployments.
+LXC containers are lightweight alternatives to VMs, suitable for build agents with systemd support.
+
+This repository uses the telmate/proxmox provider's `proxmox_lxc` resource for container provisioning.
 
 ## Architecture
 
 ```
 terraform-agent01-deploy/
-├── main.tf              # Proxmox provider + terraform-proxmox-vm module invocation
-├── variables.tf         # Input variables (Proxmox credentials, VM specs, network settings)
-├── outputs.tf           # Outputs (agent01 VM ID, IP address)
+├── main.tf              # Proxmox provider + proxmox_lxc resource
+├── variables.tf         # Input variables (Proxmox credentials, container specs, network settings)
+├── outputs.tf           # Outputs (agent01 container ID, hostname, IP address)
 ├── agent01.auto.tfvars  # Default values (committed; can be overridden)
 ├── .gitignore           # Exclude *.tfvars (sensitive), .terraform/, etc.
 └── README.md            # This file
@@ -27,9 +29,8 @@ terraform-agent01-deploy/
 
 1. **Proxmox host reachable** at the URL specified in `proxmox_api_url` (default: `https://pve08.vernify.com:8006/api2/json`)
 2. **Proxmox credentials** (username, password) provided via `proxmox_password` variable
-3. **Base template exists** in Proxmox (default template name: `ubuntu-24.04-template`, created by packer-template-proxmox)
-4. **terraform-proxmox-vm module** cloned locally or referenced from GitHub
-5. **SSH public key** for cloud-init user (Ubuntu user) — passed via `ssh_public_keys` variable
+3. **LXC container template exists** in Proxmox (default: `ubuntu-24.04-standard_24.04-2_amd64.tar.zst` on local storage)
+4. **SSH public key** for root user in LXC container — passed via `ssh_public_keys` variable
 
 ## Usage
 
@@ -39,7 +40,7 @@ terraform-agent01-deploy/
 # Initialize Terraform
 terraform init
 
-# Plan with local module path (assumes terraform-proxmox-vm cloned to ../../iac-foundry/)
+# Plan with local Proxmox credentials
 terraform plan \
   -var proxmox_password='<proxmox-password>' \
   -var 'ssh_public_keys=["ssh-rsa AAAA... user@host"]'
