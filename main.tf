@@ -1,9 +1,8 @@
-# Vernify — agent01 build capacity host.
+# Vernify — agent01 build capacity host (LXC container).
 #
-# Provisions the agent01 Ubuntu 24.04 VM for Jenkins agent + Vault agent + toolchain.
+# Provisions the agent01 Ubuntu 24.04 LXC container for Jenkins agent + Vault agent + toolchain.
+# LXC is lighter than VMs; runs systemd for agent/vault services.
 # Runs IN the `agent01` TFC workspace (created by terraform-workspaces-deploy).
-# Consumes the org-neutral terraform-proxmox-vm module; this repo holds only
-# Vernify's concrete values.
 
 terraform {
   required_version = ">= 1.15.6"
@@ -32,27 +31,52 @@ provider "proxmox" {
   pm_tls_insecure = true
 }
 
-module "agent01" {
-  # Testing: local path (both repos in same workspace).
-  # Once validated, commit feat branches and tag v0.1.0 on GitHub, then switch to:
-  #   source = "git::https://github.com/iac-foundry/terraform-proxmox-vm.git?ref=v0.1.0"
-  source = "../../iac-foundry/terraform-proxmox-vm"
+resource "proxmox_lxc" "agent01" {
+  hostname = var.lxc_hostname
+  vmid     = var.lxc_vmid
+  node     = var.proxmox_node
+  ostype   = "ubuntu"
+  osversion = "24.04"
+  storage  = var.lxc_storage
 
-  vm_name         = var.vm_name
-  node            = var.proxmox_node
-  template_name   = var.template_name
-  cores           = var.vm_cores
-  memory          = var.vm_memory
-  disk_size       = var.disk_size
-  datastore_id    = var.proxmox_datastore
-  network_bridge  = var.network_bridge
-  ci_user         = var.ci_user
-  ssh_public_keys = var.ssh_public_keys
-  ip_config = {
-    ipv4_address = var.ipv4_address
-    ipv4_gateway = var.ipv4_gateway
+  # Container specifications
+  cores   = var.lxc_cores
+  memory  = var.lxc_memory
+  swap    = var.lxc_swap
+
+  # Root filesystem
+  rootfs {
+    storage = var.lxc_storage
+    size    = "${var.lxc_disk_size}G"
   }
-  search_domain = var.search_domain
-  tags          = var.tags
-  ci_password   = var.ci_password
+
+  # Clone from existing container template on Proxmox
+  osimage = var.lxc_osimage
+
+  # Network configuration
+  network {
+    name   = "eth0"
+    bridge = var.network_bridge
+    ip     = var.ipv4_address
+    gw     = var.ipv4_gateway
+  }
+
+  # DNS configuration
+  nameserver = "192.168.22.1"
+  searchdomain = var.search_domain
+
+  # Enable systemd (required for Jenkins agent + Vault agent services)
+  init = 1
+
+  # SSH access via cloud-init or local SSH config
+  # Keys are provisioned via /etc/ssh/authorized_keys or cloud-init equivalent
+  ssh_public_keys = join("\n", var.ssh_public_keys)
+
+  # Container setup
+  unprivileged = 1
+  start        = true
+  onboot       = true
+
+  # Tags for organization
+  tags = join(";", var.tags)
 }
