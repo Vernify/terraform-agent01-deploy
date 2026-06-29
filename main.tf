@@ -14,13 +14,12 @@ terraform {
     }
   }
 
-  # Cloud backend commented out for local testing; uncomment when running in TFC.
-  # cloud {
-  #   organization = "Vernify"
-  #   workspaces {
-  #     name = "agent01"
-  #   }
-  # }
+  cloud {
+    organization = "Vernify"
+    workspaces {
+      name = "agent01"
+    }
+  }
 }
 
 provider "proxmox" {
