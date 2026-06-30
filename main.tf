@@ -9,8 +9,14 @@ terraform {
 
   required_providers {
     proxmox = {
-      source  = "telmate/proxmox"
-      version = "3.0.1-rc3"
+      source = "telmate/proxmox"
+      # 3.0.2-rc07, not 3.0.1-rc3: Proxmox 9.x removed the VM.Monitor
+      # privilege (replaced by granular VM.GuestAgent.*), and 3.0.1-rc3
+      # still demands VM.Monitor -- even for an LXC -- failing with
+      # "permissions for user/token root@pam are not sufficient ...
+      # [VM.Monitor]". 3.0.2-rc07 drops that requirement. Same bump
+      # already applied to terraform-sec01-deploy / terraform-build01-deploy.
+      version = "3.0.2-rc07"
     }
   }
 
