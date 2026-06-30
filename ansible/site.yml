@@ -84,22 +84,15 @@
     # -- without this first, the check fails with "Name or service not
     # known". The agent01 /etc/hosts task below is delegate_to: agent01, a
     # different host's file, and does not help localhost resolve anything.
-    - name: "[PRE] Add sec01/docker01 DNS entries to localhost's /etc/hosts (checks + lookups run here)"
-      # /etc/hosts inside a Docker container is bind-mounted -- lineinfile/copy
-      # use an atomic write-temp-then-rename pattern internally, which fails
-      # with "Device or resource busy" against a bind-mount target. Append
-      # directly instead, guarded by an idempotency check.
-      ansible.builtin.shell: |
-        set -o pipefail
-        if ! grep -qF "{{ sec01_ip }} sec01" /etc/hosts; then
-          echo "{{ sec01_ip }} sec01 sec01.{{ vernify_internal_domain }} vault vault.sec01 vault.sec01.{{ vernify_internal_domain }} step-ca ca.sec01 ca.sec01.{{ vernify_internal_domain }}" >> /etc/hosts
-        fi
-        if ! grep -qF "{{ docker01_ip }} docker01" /etc/hosts; then
-          echo "{{ docker01_ip }} docker01 docker01.{{ vernify_internal_domain }} jenkins jenkins.docker01 jenkins.docker01.{{ vernify_internal_domain }}" >> /etc/hosts
-        fi
-      args:
-        executable: /bin/bash
-      changed_when: true
+    - name: "[PRE] Append Vernify DNS entries to localhost's /etc/hosts (vernify.common.hosts)"
+      ansible.builtin.include_role:
+        name: vernify.common.hosts
+      vars:
+        vernify_hosts_sec01_ip: "{{ sec01_ip }}"
+        vernify_hosts_docker01_ip: "{{ docker01_ip }}"
+        vernify_hosts_agent01_ip: "{{ agent01_ip }}"
+        vernify_hosts_configure_target: false
+        vernify_hosts_configure_localhost: true
 
     - name: "[PRE] Verify Phase 4 completed (Jenkins reachable)"
       ansible.builtin.uri:
@@ -146,21 +139,18 @@
         ansible_ssh_private_key_file: "{{ ansible_ssh_private_key_file_arg }}"
         ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
 
-    - name: "[PRE] Configure /etc/hosts on agent01"
-      ansible.builtin.copy:
-        content: |
-          127.0.0.1 localhost
-          ::1 ip6-localhost ip6-loopback
-
-          {{ sec01_ip }} sec01 sec01.{{ vernify_internal_domain }} vault vault.sec01 vault.sec01.{{ vernify_internal_domain }} step-ca ca.sec01 ca.sec01.{{ vernify_internal_domain }}
-          {{ docker01_ip }} docker01 docker01.{{ vernify_internal_domain }} jenkins jenkins.docker01 jenkins.docker01.{{ vernify_internal_domain }}
-          {{ agent01_ip }} agent01 agent01.{{ vernify_internal_domain }}
-        dest: /etc/hosts
-        mode: "0644"
-        owner: root
-        group: root
-      become: true
-      delegate_to: agent01
+    - name: "[PRE] Configure /etc/hosts on agent01 (vernify.common.hosts)"
+      ansible.builtin.include_role:
+        name: vernify.common.hosts
+        apply:
+          delegate_to: agent01
+          become: true
+      vars:
+        vernify_hosts_sec01_ip: "{{ sec01_ip }}"
+        vernify_hosts_docker01_ip: "{{ docker01_ip }}"
+        vernify_hosts_agent01_ip: "{{ agent01_ip }}"
+        vernify_hosts_configure_target: true
+        vernify_hosts_configure_localhost: false
 
     # Phase 3 retains the Vault root token at /opt/vault/root-token.txt on
     # sec01 (root 0600) for later phases; read it once here and use it for
