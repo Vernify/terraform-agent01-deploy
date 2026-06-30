@@ -1,0 +1,16 @@
+---
+# Ansible collection requirements for terraform-agent01-deploy/ansible/site.yml
+# Run: ansible-galaxy collection install -r requirements.yml --force
+collections:
+  - name: blueprints.jenkins
+    source: https://github.com/iac-foundry/ansible-collection-jenkins
+    type: git
+    version: a089147b90f443621dc00caf8d638488c1dd01dc  # feat/phase-3-5-bootstrap
+
+  - name: blueprints.vault_integrations
+    source: https://github.com/iac-foundry/ansible-collection-vault-integrations
+    type: git
+    version: 93a4161d2afc8ca56a60e8b48276cb7e9eb8e4cc  # feat/phase-3-5-bootstrap
+
+  - name: community.general
+    version: ">=3.0.0,<4.0.0"
